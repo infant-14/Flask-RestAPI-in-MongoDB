@@ -35,25 +35,34 @@ def get_books():
 
 @app.route('/filtered-books', methods=['GET'])
 def filter_books():
+    """
+    http GET :5000/filtered-books author==John sort_by==author sort_order==1
+    http GET :5000/filtered-books sort_by==title sort_order==-1
+    """
     author = request.args.get('author')
-    category_id = request.args.get('category_id')
-    sort_by_title = request.args.get('sort_by_title')
-    
+    sort_by = request.args.get('sort_by')
+    sort_order = request.args.get('sort_order', '1')  # Default sort order is ascending
+
     query = {}
     if author:
         query['author'] = author
-    if category_id:
-        query['category_id'] = category_id
-    
+
     books = mongo.db.books.find(query)
-    if sort_by_title:
-        sort_order = 1 if request.args.get('sort_order') == '1' else -1
-        books = books.sort('title', sort_order)
-    
+
+    # Determine the sort order
+    sort_order = int(sort_order)
+    if sort_order not in [1, -1]:
+        sort_order = 1  # Default to ascending if invalid sort_order is provided
+
+    # Sort the books if sort_by parameter is provided
+    if sort_by in ['author', 'title']:
+        books = books.sort(sort_by, sort_order)
+
     # Convert ObjectId to string for JSON serialization
     filtered_books = [{'_id': str(book['_id']), 'title': book['title'], 'author': book['author']} for book in books]
-    
+
     return jsonify({'filtered_books': filtered_books})
+
 
 @app.route('/books/<book_id>', methods=['GET'])
 def get_book_by_id(book_id):
